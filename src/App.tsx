@@ -1,7 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
+import DocumentMeta from 'react-document-meta';
 import { makeStyles } from '@material-ui/core/styles';
-import { AppBar, Avatar, Badge, Button, Grid, IconButton, Modal, Paper, Toolbar, Typography } from '@material-ui/core';
+import { AppBar, Avatar, Badge, Button, IconButton, Modal, Paper, Toolbar, Typography } from '@material-ui/core';
 import MenuIcon from '@material-ui/icons/Menu';
 import SearchIcon from '@material-ui/icons/Search';
 import ShoppingCartIcon from '@material-ui/icons/ShoppingCart';
@@ -22,11 +23,6 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: theme.spacing(2),
     marginLeft: theme.spacing(1),
     marginRight: theme.spacing(1),
-  },
-  paper: {
-    padding: theme.spacing(2),
-    textAlign: 'center',
-    color: theme.palette.text.secondary,
   },
   image: {
     width: theme.spacing(15),
@@ -49,24 +45,71 @@ const useStyles = makeStyles((theme) => ({
     marginLeft: theme.spacing(5),
     marginRight: theme.spacing(5),
   },
-  modalStyle: {
-    top: "50%",
-    left: "50%"
-  },
-  paperModal: {
-    position: 'absolute',
-    width: 400,
-    backgroundColor: theme.palette.background.paper,
-    border: '2px solid #000',
-    boxShadow: theme.shadows[5],
-    padding: theme.spacing(2, 4, 3),
-  },
 }));
+
+const CartHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+`;
+
+const CartItemsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+`;
+
+const CartItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #80808040;
+`;
+
+const ItemImage = styled(Avatar).attrs({
+  variant: 'square',
+})`
+  margin-left: 15px;
+  width: 120px;
+  height: 120px;
+`;
+
+const ItemDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding-left: 15px;
+  justify-content: space-between;
+`;
+
+const ItemPrice = styled.div``;
+
+const ItemQuantityContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 15px;
+`;
 
 const ButtonsContainer = styled.div`
   margin: 20px 0;
+  padding-bottom: 15px;
   display: flex;
   justify-content: space-around;
+`;
+
+const ModalContainer = styled.div`
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  border: 2px solid #000;
+  padding: 16px 32px 24px;
+  position: absolute;
+  box-shadow: 0px 3px 5px -1px rgba(0,0,0,0.2), 0px 5px 8px 0px rgba(0,0,0,0.14), 0px 1px 14px 0px rgba(0,0,0,0.12);
+  background-color: #fff;
 `;
 
 interface Cart {
@@ -128,6 +171,8 @@ function App() {
   const [openClear, setOpenClear] = React.useState(false);
   const [guidToDelete, setGuidToDelete] = React.useState<string|null>(null);
 
+  const [meta, setMeta] = React.useState<any|null>(null);
+
   const products: ICartItem[] = cart ? cart[Object.keys(cart)[0]].products : [];
   const totalSum = products.reduce((acc, elem) => {
     return acc + elem.price * elem.quantity;
@@ -135,6 +180,24 @@ function App() {
 
   React.useEffect(() => {
     const fetchData = async () => {
+      const bot = await fetch('https://designer.fstrk.io/api/current-bot/',{
+        headers: headers,
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          return data;
+        });
+
+      setMeta({
+        title: `${bot.name} | Корзина`,
+        meta: {
+          name: "viewport",
+          content: "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,shrink-to-fit=no",
+          charset: 'utf-8',
+        }
+      });
+
+
       const cart = await fetch(`https://designer.fstrk.io/api/partners/chats/${getParams.chat_uuid}/variables/`, {
         headers
       })
@@ -221,59 +284,56 @@ function App() {
   };
 
   return (
-    <div>
-      <header>
-        <AppBar position="static">
-          <Toolbar>
-            <IconButton edge="start" className={classes.menuButton} color="inherit" aria-label="menu">
-              <MenuIcon />
-            </IconButton>
-            <IconButton edge="start" className={classes.menuButton} color="inherit" aria-label="search">
-              <SearchIcon />
-            </IconButton>
-            <IconButton edge="start" className={classes.title} color="inherit" aria-label="search">
-              <Badge badgeContent={products.length} color="error">
-                <ShoppingCartIcon />
-              </Badge>
-            </IconButton>
-            <Button color="inherit" onClick={() => {
-              cart && updateCart(cart);
-              if (getParams.on_close_url) window.location.replace(getParams.on_close_url);
-            }}>Закрыть</Button>
-          </Toolbar>
-        </AppBar>
-      </header>
-      <Paper variant="elevation">
-        <Grid container justify="space-between">
-          <Typography variant="h4" gutterBottom className={classes.subtitle}>
+    <DocumentMeta {...meta}>
+      <div>
+        <header>
+          <AppBar position="static">
+            <Toolbar>
+              <IconButton edge="start" className={classes.menuButton} color="inherit" aria-label="menu">
+                <MenuIcon />
+              </IconButton>
+              <IconButton edge="start" className={classes.menuButton} color="inherit" aria-label="search">
+                <SearchIcon />
+              </IconButton>
+              <IconButton edge="start" className={classes.title} color="inherit" aria-label="search">
+                <Badge badgeContent={products.length} color="error">
+                  <ShoppingCartIcon />
+                </Badge>
+              </IconButton>
+              <Button color="inherit" onClick={() => {
+                cart && updateCart(cart);
+                if (getParams.on_close_url) window.location.replace(getParams.on_close_url);
+              }}>Закрыть</Button>
+            </Toolbar>
+          </AppBar>
+        </header>
+        <Paper variant="elevation">
+          <CartHeader>
+            <Typography variant="h4" gutterBottom className={classes.subtitle}>
               Корзина {cart?.length}
             </Typography>
             <Typography variant="h4" gutterBottom className={classes.subtitle}>
               {totalSum} руб.
             </Typography>
-        </Grid>
-        <Grid container spacing={3}>
-          {products.map((product, i) => {
-            return (
-              <Grid key={product.guid} item xs={12}>
-                <Paper className={classes.paper}>
-                  <Grid container justify="space-between">
-                    <Grid item xs={1}>
-                      <Avatar variant="square" src={product.image} className={classes.image} />
-                    </Grid>
-                    <Grid item xs={7} alignContent="flex-start">
+          </CartHeader>
+          <CartItemsContainer>
+            {products.map((product, i) => {
+              return (
+                <CartItem key={product.guid}>
+                    <ItemImage src={product.image} />
+                    <ItemDetails>
                       <Typography color="primary" variant="body1" className={classes.itemTitle}>
                         {product.title}
                       </Typography>
                       <Typography variant="body1" className={classes.itemSize}>
                         {product.choices.field_multichoice.title}: {product.choices.field_multichoice.value}
                       </Typography>
-                      <Grid container xs={12} justify="flex-start">
+                      <ItemPrice>
                         <Typography variant="body1" component="span">{product.discount_price ? (product.discount_price + " руб.") : null}</Typography>
                         <Typography variant="body1" component="span" className={product.discount_price ? classes.hasDiscountPrice : undefined}>{product.price} руб.</Typography>
-                      </Grid>
-                    </Grid>
-                    <Grid container xs={3} justify="center" alignItems="center">
+                      </ItemPrice>
+                    </ItemDetails>
+                    <ItemQuantityContainer>
                       {
                         product.quantity == 1 ? (
                           <Button variant="contained" color="primary" onClick={() => {handleOpen(product.guid)}}>
@@ -285,57 +345,48 @@ function App() {
                       }
                       <Typography variant="h4" component="span" className={classes.quantity}>{product.quantity}</Typography>
                       <Button variant="contained" color="primary" onClick={() => {onChangeQuantity(product.guid, true)}}>+</Button>
-                    </Grid>
-                  </Grid>
-                </Paper>
-              </Grid>
-            );
-          })}
-        </Grid>
-        {products.length &&(
-          <ButtonsContainer>
-            <Button variant="contained" color="primary" onClick={sendCart}>Оформить заказ</Button>
-            <Button variant="contained" color="secondary" onClick={handleClearOpen}>Очистить корзину</Button>
-          </ButtonsContainer>
-        )}
-      </Paper>
-      <Modal
-        open={openDelete}
-        onClose={handleClose}
-        aria-labelledby="simple-modal-title"
-        aria-describedby="simple-modal-description"
-      >
-        <div style={{
-          top: `50%`,
-          left: `50%`,
-          transform: `translate(-50%, -50%)`
-        }} className={classes.paperModal}>
-          <Typography variant="h4">Удалить продукт из списка?</Typography>
-          <ButtonsContainer>
-          <Button variant="contained" color="primary" onClick={handleClose}>Отменить</Button>
-          <Button variant="contained" color="secondary" onClick={deleteItem}>Удалить</Button>
-        </ButtonsContainer>
-        </div>
-      </Modal>
-      <Modal
-        open={openClear}
-        onClose={handleClearClose}
-        aria-labelledby="simple-modal-title"
-        aria-describedby="simple-modal-description"
-      >
-        <div style={{
-          top: `50%`,
-          left: `50%`,
-          transform: `translate(-50%, -50%)`
-        }} className={classes.paperModal}>
-          <Typography variant="h4">Вы действительно хотите очистить корзину?</Typography>
-          <ButtonsContainer>
-          <Button variant="contained" color="primary" onClick={handleClearClose}>Отменить</Button>
-          <Button variant="contained" color="secondary" onClick={clearCart}>Очистить</Button>
-        </ButtonsContainer>
-        </div>
-      </Modal>
-    </div>
+                    </ItemQuantityContainer>
+                </CartItem>
+              );
+            })}
+          </CartItemsContainer>
+          {products.length &&(
+            <ButtonsContainer>
+              <Button variant="contained" color="primary" onClick={sendCart}>Оформить заказ</Button>
+              <Button variant="contained" color="secondary" onClick={handleClearOpen}>Очистить корзину</Button>
+            </ButtonsContainer>
+          )}
+        </Paper>
+        <Modal
+          open={openDelete}
+          onClose={handleClose}
+          aria-labelledby="simple-modal-title"
+          aria-describedby="simple-modal-description"
+        >
+          <ModalContainer>
+            <Typography variant="h4">Удалить продукт из списка?</Typography>
+            <ButtonsContainer>
+              <Button variant="contained" color="primary" onClick={handleClose}>Отменить</Button>
+              <Button variant="contained" color="secondary" onClick={deleteItem}>Удалить</Button>
+            </ButtonsContainer>
+          </ModalContainer>
+        </Modal>
+        <Modal
+          open={openClear}
+          onClose={handleClearClose}
+          aria-labelledby="simple-modal-title"
+          aria-describedby="simple-modal-description"
+        >
+          <ModalContainer>
+            <Typography variant="h4">Вы действительно хотите очистить корзину?</Typography>
+            <ButtonsContainer>
+              <Button variant="contained" color="primary" onClick={handleClearClose}>Отменить</Button>
+              <Button variant="contained" color="secondary" onClick={clearCart}>Очистить</Button>
+            </ButtonsContainer>
+          </ModalContainer>
+        </Modal>
+      </div>
+    </DocumentMeta>
   );
 }
 
