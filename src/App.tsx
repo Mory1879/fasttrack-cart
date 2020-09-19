@@ -101,14 +101,32 @@ interface ICartItem {
   title: string;
 }
 
+const searchParams = new URLSearchParams(window.location.search);
+const getParams = {
+  bot_key: searchParams.get('bot_key'),
+  on_success_node: searchParams.get('on_success_node'),
+  primary_color: searchParams.get('primary_color'),
+  ecommerce_url: searchParams.get('ecommerce_url'),
+  ecommerce: searchParams.get('ecommerce'),
+  on_close_url: searchParams.get('on_close_url'),
+  base_url: searchParams.get('base_url'),
+  chat_uuid: searchParams.get('chat_uuid'),
+  widget_origin: searchParams.get('widget_origin'),
+  is_async: searchParams.get('is_async'),
+  on_clear_node: searchParams.get('on_clear_node')
+};
+
+const headers = getParams.bot_key ? {
+  "bot-key": getParams.bot_key,
+  'Content-Type': 'application/json'
+} : undefined;
+
 function App() {
   const classes = useStyles();
   const [cart, setCart] = React.useState<Cart | undefined>(undefined);
-  const [params, setParams] = React.useState<any>(undefined);
   const [openDelete, setOpenDelete] = React.useState(false);
   const [openClear, setOpenClear] = React.useState(false);
-  // можно сделать через айдишник товара вместо индекса
-  const [indexToDelete, setIndexToDelete] = React.useState<number|null>(null);
+  const [guidToDelete, setGuidToDelete] = React.useState<string|null>(null);
 
   const products: ICartItem[] = cart ? cart[Object.keys(cart)[0]].products : [];
   const totalSum = products.reduce((acc, elem) => {
@@ -116,39 +134,7 @@ function App() {
   }, 0);
 
   React.useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const getParams = {
-      bot_key: searchParams.get('bot_key'),
-      on_success_node: searchParams.get('on_success_node'),
-      primary_color: searchParams.get('primary_color'),
-      ecommerce_url: searchParams.get('ecommerce_url'),
-      ecommerce: searchParams.get('ecommerce'),
-      on_close_url: searchParams.get('on_close_url'),
-      base_url: searchParams.get('base_url'),
-      chat_uuid: searchParams.get('chat_uuid'),
-      widget_origin: searchParams.get('widget_origin'),
-      is_async: searchParams.get('is_async'),
-      on_clear_node: searchParams.get('on_clear_node')
-    };
-
-    const headers = getParams.bot_key ? {
-      "bot-key": getParams.bot_key
-    } : undefined;
-
-    setParams(getParams)
-
     const fetchData = async () => {
-      // Не нашел применения
-      // const uuid = await fetch('https://designer.fstrk.io/api/current-bot/',{
-      //   headers: headers,
-      // })
-      //   .then((response) => response.json())
-      //   .then((data) => {
-      //     return data.uuid;
-      //   });
-      // const shop = await fetch(`https://fasttrack-ecom-fashion.flex.fstrk.io/api/ecommerce/${getParams.ecommerce}/`)
-      //   .then((response) => response.json())
-      //   .then((data) => data);
       const cart = await fetch(`https://designer.fstrk.io/api/partners/chats/${getParams.chat_uuid}/variables/`, {
         headers
       })
@@ -161,12 +147,7 @@ function App() {
   }, []);
 
   const updateCart = async (cart: Cart) => {
-    const headers = params.bot_key ? {
-      "bot-key": params.bot_key,
-      'Content-Type': 'application/json'
-    } : undefined;
-
-    const updatedCart = await fetch(`https://designer.fstrk.io/api/partners/chats/${params.chat_uuid}/variables/`, {
+    const updatedCart = await fetch(`https://designer.fstrk.io/api/partners/chats/${getParams.chat_uuid}/variables/`, {
         method: "POST",
         headers,
         body: JSON.stringify(cart)
@@ -178,34 +159,28 @@ function App() {
   };
 
   const sendCart = async () => {
-    const headers = params.bot_key ? {
-      "bot-key": params.bot_key,
-      'Content-Type': 'application/json'
-    } : undefined;
-
     const data = {
-      node: params.on_success_node,
+      node: getParams.on_success_node,
       is_async: false,
-      get_params: params
+      get_params: getParams
     };
 
-    const updatedCart = await fetch(`https://designer.fstrk.io/api/partners/chats/${params.chat_uuid}/push/`, {
+    const updatedCart = await fetch(`https://designer.fstrk.io/api/partners/chats/${getParams.chat_uuid}/push/`, {
       method: "POST",
       headers,
       body: JSON.stringify(data)
     })
       .then((response) => response.json())
       .then((data) => data);
-    if (updatedCart.status === 'ok') window.location.replace(params.on_close_url);
+    if (updatedCart.status === 'ok' && getParams.on_close_url) window.location.replace(getParams.on_close_url);
   };
 
-  const onChangeQuantity = (index: number, addItem: boolean) => {
+  const onChangeQuantity = (guid: string, addItem: boolean) => {
     const newProducts = [...products];
-    if (addItem) {
-      newProducts[index].quantity += 1;
-    } else {
-      newProducts[index].quantity -= 1;
-    }
+    const productIndex = newProducts.findIndex((product) => product.guid === guid);
+    addItem ? 
+      newProducts[productIndex].quantity += 1 :
+      newProducts[productIndex].quantity -= 1;
     const newCart: Cart = {...cart};
     newCart[Object.keys(newCart)[0]].products = newProducts;
 
@@ -213,7 +188,7 @@ function App() {
   };
 
   const deleteItem = () => {
-    const newProducts = [...products].filter((product,i) => i !== indexToDelete);
+    const newProducts = [...products].filter((product) => product.guid !== guidToDelete);
     const newCart: Cart = {...cart};
     newCart[Object.keys(newCart)[0]].products = newProducts;
 
@@ -228,8 +203,8 @@ function App() {
     updateCart(newCart);
   };
 
-  const handleOpen = (i: number) => {
-    setIndexToDelete(i);
+  const handleOpen = (guid: string) => {
+    setGuidToDelete(guid);
     setOpenDelete(true);
   };
 
@@ -263,7 +238,7 @@ function App() {
             </IconButton>
             <Button color="inherit" onClick={() => {
               cart && updateCart(cart);
-              window.location.replace(params.on_close_url);
+              if (getParams.on_close_url) window.location.replace(getParams.on_close_url);
             }}>Закрыть</Button>
           </Toolbar>
         </AppBar>
@@ -280,7 +255,7 @@ function App() {
         <Grid container spacing={3}>
           {products.map((product, i) => {
             return (
-              <Grid key={i} item xs={12}>
+              <Grid key={product.guid} item xs={12}>
                 <Paper className={classes.paper}>
                   <Grid container justify="space-between">
                     <Grid item xs={1}>
@@ -301,15 +276,15 @@ function App() {
                     <Grid container xs={3} justify="center" alignItems="center">
                       {
                         product.quantity == 1 ? (
-                          <Button variant="contained" color="primary" onClick={() => {handleOpen(i)}}>
+                          <Button variant="contained" color="primary" onClick={() => {handleOpen(product.guid)}}>
                             <DeleteIcon />
                           </Button>
                         ) : (
-                          <Button variant="contained" color="primary" onClick={() => {onChangeQuantity(i, false)}}>-</Button>
+                          <Button variant="contained" color="primary" onClick={() => {onChangeQuantity(product.guid, false)}}>-</Button>
                         )
                       }
                       <Typography variant="h4" component="span" className={classes.quantity}>{product.quantity}</Typography>
-                      <Button variant="contained" color="primary" onClick={() => {onChangeQuantity(i, true)}}>+</Button>
+                      <Button variant="contained" color="primary" onClick={() => {onChangeQuantity(product.guid, true)}}>+</Button>
                     </Grid>
                   </Grid>
                 </Paper>
