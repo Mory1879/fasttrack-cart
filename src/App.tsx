@@ -9,9 +9,6 @@ import ShoppingCartIcon from '@material-ui/icons/ShoppingCart';
 import DeleteIcon from '@material-ui/icons/Delete';
 
 const useStyles = makeStyles((theme) => ({
-  root: {
-    flexGrow: 1,
-  },
   menuButton: {
     marginRight: theme.spacing(2),
   },
@@ -189,12 +186,7 @@ function App() {
         });
 
       setMeta({
-        title: `${bot.name} | Корзина`,
-        meta: {
-          name: "viewport",
-          content: "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,shrink-to-fit=no",
-          charset: 'utf-8',
-        }
+        title: `${bot.name} | Корзина`
       });
 
 
